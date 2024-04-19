@@ -1,0 +1,16 @@
+{
+    "name": "LangGraph-Practice",
+    "build": {
+      "dockerfile": "Dockerfile"
+    },
+    "settings": {
+      "python.pythonPath": "/workspace/.venv/bin/python",
+      "python.linting.pylintEnabled": true,
+      "python.linting.enabled": true
+    },
+    "extensions": [
+      "ms-python.python"
+    ],
+    "postCreateCommand": "echo 'Welcome to your Python project in Codespaces with a virtual environment!'",
+    "remoteUser": "vscode"
+}
