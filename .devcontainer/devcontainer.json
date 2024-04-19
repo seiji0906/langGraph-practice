@@ -1,16 +1,15 @@
 {
-    "name": "LangGraph-Practice",
-    "build": {
-      "dockerfile": "Dockerfile"
-    },
-    "settings": {
-      "python.pythonPath": "/workspace/.venv/bin/python",
-      "python.linting.pylintEnabled": true,
-      "python.linting.enabled": true
-    },
-    "extensions": [
-      "ms-python.python"
-    ],
-    "postCreateCommand": "echo 'Welcome to your Python project in Codespaces with a virtual environment!'",
-    "remoteUser": "vscode"
+  "name": "Python 3.10",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": { "VARIANT": "3.10" }
+  },
+  "runArgs": [ "-u", "vscode", "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
+  "settings": { 
+    "terminal.integrated.shell.linux": "/bin/bash"
+  },
+  "extensions": ["ms-python.python"],
+  "forwardPorts": [5000],
+  "postCreateCommand": "pip install -r requirements.txt"
 }
