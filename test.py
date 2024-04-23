@@ -39,7 +39,7 @@ class AgentState(TypedDict):
 
 # 継続するか否かを判定する関数を定義
 def should_continue(state):
-    print(f"should_continue state: {state}")
+    # print(f"should_continue state: {state}")
     messages = state['messages']
     last_message = messages[-1]
     # 関数呼び出しがない場合は終了
@@ -51,7 +51,7 @@ def should_continue(state):
 
 # モデルを呼び出す関数を定義
 def call_model(state):
-    print(f"call_model state: {state}")
+    # print(f"call_model state: {state}")
     messages = state['messages']
     response = model.invoke(messages)
     # リストを返すのは、既存のリストに追加されるためです
@@ -59,7 +59,7 @@ def call_model(state):
 
 # ツールを実行する関数を定義
 def call_tool(state):
-    print(f"call_tool state: {state}")
+    # print(f"call_tool state: {state}")
     messages = state['messages']
     # 継続条件に基づいて
     # 最後のメッセージが関数呼び出しを含んでいることがわかっている
@@ -118,56 +118,24 @@ workflow.add_edge('action', 'agent')
 # つまり、他の実行可能なものと同じように使用できます。
 app = workflow.compile()
 
-#　上記でワークフローが完成
+# inputs = {"messages": [HumanMessage(content="what is the weather in sf")]}
+# for output in app.stream(inputs):
+#     # stream() yields dictionaries with output keyed by node name
+#     for key, value in output.items():
+#         print(f"Output from node '{key}':")
+#         print("---")
+#         print(value)
+#     print("\n---\n")
 
-st.title("LangGraph サイクル例")
-
-user_input = st.text_input("質問を入力してください:")
-
-if user_input:
-    start_time = time.time()
-    input = {
-        "messages": [HumanMessage(content=user_input)]
-    }
-    for output in app.stream(input):
-        # stream() yields dictionaries with output keyed by node name
-        for key, value in output.items():
-            print(f"Output from node '{key}':")
-            st.write(f"output from node '{key}")
-            print("---")
-            st.write("---")
-            print(value)
-            st.write(value)
-        end_time = time.time()
-        st.write(f"応答時間: {end_time - start_time}s")
-        st.write("\n---\n")
-        print("\n---\n")
-
-# TODO
-# ストリーム出力
-# async def get_stream(input):
-#     async for output in app.astream_log(input, include_types=["llm"]):
-#         for op in output.ops:
-#             if op["path"] == "/streamed_output/-":
-#                 ...
-#             elif op["path"].startswith("/logs/") and op["path"].endswith("/streamed_output/-"):
-#                 print(op["value"])
-#                 st.write(op["value"])
-
-# async def main():
-#     if user_input:
-#         input = {"messages": [HumanMessage(content=user_input)]}
-#         await get_stream(input)
-
-# st.title("LangGraph サイクル例")
-# user_input = st.text_input("質問を入力してください:")
-
-# if user_input:
-#     asyncio.run(main())
-
-
-
-# 「LangGraphとは？」
-# という質問に対しては、ツール使って検索したうえで回答した。
-# ただし２回目以降は、LangGraph系の質問をしたら（LangGraphとLangChainについて　など）、ツールを使わなくなった。
-# 
+inputs = {"messages": [HumanMessage(content="what is the weather in sf")]}
+async for output in app.astream_log(inputs, include_types=["llm"]):
+    # astream_log() yields the requested logs (here LLMs) in JSONPatch format
+    for op in output.ops:
+        if op["path"] == "/streamed_output/-":
+            # this is the output from .stream()
+            ...
+        elif op["path"].startswith("/logs/") and op["path"].endswith(
+            "/streamed_output/-"
+        ):
+            # because we chose to only include LLMs, these are LLM tokens
+            print(op["value"])
