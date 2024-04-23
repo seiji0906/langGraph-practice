@@ -3,6 +3,8 @@
 ## 目次
 * LangGraphについて
 * LangGraphとAutoGen
+* サイクル
+* 環境構築
 
 [LangGraph](https://python.langchain.com/docs/langgraph/)
 > （公式）LangGraph は、LLM を使用してステートフルなマルチアクター アプリケーションを構築するためのライブラリであり、 LangChain上に構築されています (LangChain とともに使用されることを目的としています) 。
@@ -65,3 +67,77 @@ b. エージェントが処理完了を指示した場合、終了します。
 
 ユーザーからのプロンプトを　runnable.invoke(HumanMessage(user_input))を通じて、言語モデルに渡され、言語モデルはプロンプトからtool_callsを必要に応じて生成する。
 tool_callsの有無で、multiply関数を用いるかどうかを判断している。
+
+
+
+# サイクル
+
+LangChainからクラスを再生成する。エージェント自体は、チャットモデルと関数呼び出しを使用する。
+## AgentExecutor
+このエージェントは、すべての状態をメッセージのリストとして表す。
+
+例として使用するツール
+### [tavily](https://app.tavily.com/)
+AIエージェントとLLMに最適化された最初のリサーチエンジン
+
+### ツールのセットアップ
+使用するツールの定義
+
+[独自のツールの作成方法](https://python.langchain.com/docs/modules/tools/custom_tools/)
+
+
+```python
+from langchain_community.tools.tavily_search import TavilySearchResults
+
+tools = [TavilySearchResults(max_results=1)]
+```
+> [TavilySearchResults doc](https://api.python.langchain.com/en/latest/tools/langchain_community.tools.tavily_search.tool.TavilySearchResults.html)\
+Tavily Search APIをクエリしてjsonを返すツール。
+キーワード引数からの入力データを解析して検証することにより、新しいモデルを作成します。
+入力データを解析して有効なモデルを形成できない場合、 ValidationError を送出します。
+
+### 使用するモデルの設定
+使用するチャットモデルのロード
+
+```python
+# openai
+from langchain_openai import ChatOpenAI
+model = ChatOpenAI(temperature=0, streaming=True)
+
+# 他のLLM(azureやanthropic,huggingfaceなど)
+# langchain_communityにあるにはあるっぽい。バージョンとか互換性があるかはわからぬ
+# https://api.python.langchain.com/en/latest/community_api_reference.html#module-langchain_community.llms
+```
+
+### 定義したツールをモデルが認識できるか確認
+```python
+from langchain.tools.render import format_tool_to_openai_function
+# format_tool_to_openai_functionは、langchain0.2で削除される（現在0.1.16）
+# LangChainDeprecationWarning: The function `format_tool_to_openai_function` was deprecated in LangChain 0.1.16 and will be removed in 0.2.0. Use langchain_core.utils.function_calling.convert_to_openai_function() instead.
+
+functions = [format_tool_to_openai_function(t) for t in tools]
+model = model.bind_functions(functions)
+```
+上記コードで、LangChainツールをOpenAI関数呼び出しの形式に変換し、モデルクラスにバインドしている
+
+### エージェントの状態の定義（StateGraph）
+StateGraphは、各ノードに状態オブジェクトを渡し、状態オブジェクトをアップデートする操作を返すノードを作成する。これらの操作は、状態の特定の属性をSET（既存の値を上書きするなど）するか、既に存在する属性にADDすることができる。
+SETするかADDするかは、状態オブジェクトの定義の際に、指定する。
+```python
+from typing import TypedDict, Annotated, Sequence
+import operator
+from langchain_core.messages import BaseMessage
+
+
+class AgentState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+```
+上記例では、メッセージのリストの状態を追跡するAgentStateクラスを定義している。各ノード（エージェントの状態をSETまたはADDする）は、状態の更新をする際には、メッセージを追加するだけである。故に単一のキーmessagesを持つTypedDictを使用している。第２引数に状態の更新の仕方（SETかADDか）を指定している。
+
+
+# 環境構築
+.envにAPIキー等必要な情報を記述\
+python -m venv venv\
+source venv/bin/activate\
+pip install -r requirements.txt\
+streamlit run app.py
