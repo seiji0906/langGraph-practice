@@ -135,6 +135,70 @@ class AgentState(TypedDict):
 上記例では、メッセージのリストの状態を追跡するAgentStateクラスを定義している。各ノード（エージェントの状態をSETまたはADDする）は、状態の更新をする際には、メッセージを追加するだけである。故に単一のキーmessagesを持つTypedDictを使用している。第２引数に状態の更新の仕方（SETかADDか）を指定している。
 
 
+### ノードの定義
+ノードは関数または実行可能オブジェクトのいずれかになる。
+今回の例では二つのノードを必要とする。
+
+* エージェント：何かしらのアクションを取るかどうかを決定する責任者。
+* ツールを起動する関数：エージェントがアクションを取ることを決定したら、このノードがそのアクションを実行します。
+
+> ノード：　グラフ内の個別の点や位置を表す\
+エッジ：　ノード間の関係や接続を表す\
+数学のグラフ理論の用語
+
+エッジの定義
+* 条件付きエッジ：　エージェントが呼び出された後\
+a. エージェントがアクションを実行するように指示した場合は、ツールを呼び出す関数を呼び出す必要がある\
+b. エージェントが終了したと言った場合は、終了する必要がある\
+* 通常のエッジ：　ツールが呼び出された後、常にエージェントに戻り、次に何をすべきかを決定する
+
+
+```python
+from langgraph.prebuilt import ToolInvocation
+import json
+from langchain_core.messages import FunctionMessage
+
+# Define the function that determines whether to continue or not
+def should_continue(state):
+    messages = state['messages']
+    last_message = messages[-1]
+    # If there is no function call, then we finish
+    if "function_call" not in last_message.additional_kwargs:
+        return "end"
+    # Otherwise if there is, we continue
+    else:
+        return "continue"
+
+# Define the function that calls the model
+def call_model(state):
+    messages = state['messages']
+    response = model.invoke(messages)
+    # We return a list, because this will get added to the existing list
+    return {"messages": [response]}
+
+# Define the function to execute tools
+def call_tool(state):
+    messages = state['messages']
+    # Based on the continue condition
+    # we know the last message involves a function call
+    last_message = messages[-1]
+    # We construct an ToolInvocation from the function_call
+    action = ToolInvocation(
+        tool=last_message.additional_kwargs["function_call"]["name"],
+        tool_input=json.loads(last_message.additional_kwargs["function_call"]["arguments"]),
+    )
+    # We call the tool_executor and get back a response
+    response = tool_executor.invoke(action)
+    # We use the response to create a FunctionMessage
+    function_message = FunctionMessage(content=str(response), name=action.tool)
+    # We return a list, because this will get added to the existing list
+    return {"messages": [function_message]}
+```
+
+### 数学グラフ理論
+
+
+
 # 環境構築
 .envにAPIキー等必要な情報を記述\
 python -m venv venv\
