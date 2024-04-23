@@ -24,7 +24,7 @@ tools = [TavilySearchResults(max_results=1)]
 
 tool_executor = ToolExecutor(tools)
 
-model = ChatOpenAI(temperature=0, streaming=True)
+model = ChatOpenAI(model="gpt-3.5-turbo-1106", streaming=True)
 
 
 # format_tool_to_openai_functionは、langchain0.2で削除される（現在0.1.16）
